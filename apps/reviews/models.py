@@ -11,7 +11,7 @@ class StatusChoices(models.TextChoices):
     APPROVED = "APPROVED", "approved"
     REJECTED = "REJECTED", "rejected"
 
-class DecisionChoices(models.Choices):
+class DecisionChoices(models.TextChoices):
     APPROVE = 'aprove', 'Aprove'
     REJECT = 'reject', 'Reject'
     REQUEST_CHANGES = 'request_changes', 'Request Changes'

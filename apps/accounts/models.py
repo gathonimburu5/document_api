@@ -5,6 +5,11 @@ import uuid
 from datetime import timedelta
 from django.utils import timezone
 
+class GenderChoices(models.TextChoices):
+    MALE = "MALE", "Male"
+    FEMALE = "FEMALE", "Female"
+    OTHER = "OTHER", "Other"
+
 class Role(models.Model):
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True, null=True)
@@ -27,7 +32,7 @@ class User(AbstractUser):
     phone_number = models.CharField(max_length=20, blank=True)
     profile_picture = models.ImageField(upload_to="profiles/", blank=True, null=True)
     date_of_birth = models.DateField(blank=True, null=True)
-    gender = models.CharField(max_length=20, blank=True)
+    gender = models.CharField(max_length=20, choices=GenderChoices.choices, blank=True)
     address = models.TextField(blank=True)
     is_email_verified = models.BooleanField(default=False)
     is_locked = models.BooleanField(default=False)

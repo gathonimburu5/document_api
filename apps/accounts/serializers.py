@@ -6,12 +6,14 @@ from apps.commons.utils import validate_file_size
 
 class RegisterUserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, validators=[validate_password_stregth])
+    password_confirm = serializers.CharField(write_only=True, style={"input_type": "password"})
 
     class Meta:
         model = User
-        fields = ("email", "password", "first_name", "last_name", "phone_number", "gender", "date_of_birth", "address",)
+        fields = ("email", "password", "password_confirm", "first_name", "last_name", "phone_number", "gender", "date_of_birth", "address",)
 
     def validate_email(self, value):
+        value = value.lower().strip()
         if User.objects.filter(email=value).exists():
             raise serializers.ValidationError("A user with this email already exists.")
         return value
@@ -20,6 +22,15 @@ class RegisterUserSerializer(serializers.ModelSerializer):
         if value and User.objects.filter(phone_number=value).exists():
             raise serializers.ValidationError("A user with this phone number already exists.")
         return value
+
+    def validate_password(self, value):
+        self.validate_password(value)
+        return value
+
+    def validate(self, attrs):
+        if attrs["password"] != attrs["password_confirm"]:
+            raise serializers.ValidationError({"password_confirm":"Password do not match."})
+        return attrs
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -170,6 +181,12 @@ class UploadProfilePictureSerializer(serializers.ModelSerializer):
 class ChangePasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField(write_only=True)
     new_password = serializers.CharField(write_only=True, validators=[validate_password_stregth])
+    confirm_password = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        if attrs["new_password"] != attrs["confirm_password"]:
+            raise serializers.ValidationError({"confirm_password":"Password do not match."})
+        return attrs
 
 
 
