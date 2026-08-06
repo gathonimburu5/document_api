@@ -35,7 +35,7 @@ class DocumentCreateAPIView(APIView):
     parser_classes = [FormParser, MultiPartParser]
 
     @extend_schema(
-        request=DocumentCreateSerializer,
+        request={ "multipart/form-data": DocumentCreateSerializer},
         responses={201: DocumentDetailSerializer, 400: "Bad Request"},
         description="Create document.",
         operation_id="document_create"

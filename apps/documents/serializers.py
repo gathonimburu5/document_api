@@ -37,14 +37,11 @@ class DocumentDetailSerializer(serializers.ModelSerializer):
         model = Document
         fields = ("title", "description", "status", "owner", "created_at", "is_archived", "updated_at", "versions",)
 
-class DocumentCreateSerializer(serializers.ModelSerializer):
+class DocumentCreateSerializer(serializers.Serializer):
     title = serializers.CharField()
     description = serializers.CharField(required=False, allow_blank=True)
     file = serializers.FileField(validators=[validate_upload_file])
     notes = serializers.CharField(required=False)
-    class Meta:
-        model = Document
-        fields = ("title", "description", "file", "notes",)
 
     def validate_title(self, value):
         if len(value.strip()) < 3:
