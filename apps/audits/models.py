@@ -5,6 +5,12 @@ class AuditAction(models.TextChoices):
     CREATE = 'CREATE', 'Create'
     UPDATE = 'UPDATE', 'Update'
     DELETE = 'DELETE', 'Delete'
+    APPROVED = 'APPROVED', 'Approved'
+    REJECTED = 'REJECTED', 'Rejected'
+    SUBMITTED = 'SUBMITTED', 'Submitted'
+    UNDER_REVIEW = "UNDER_REVIEW", "Under Review"
+    IS_ARCHIVED = 'IS_ARCHIVED', 'Is Archived'
+    RESTORED = 'RESTORED', 'Restored'
     LOGIN = 'LOGIN', 'Login'
     LOGOUT = 'LOGOUT', 'Logout'
     ASSIGN_ROLE = 'ASSIGN_ROLE', 'Assign Role'
