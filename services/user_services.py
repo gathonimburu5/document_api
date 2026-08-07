@@ -9,8 +9,10 @@ class UserService:
     @transaction.atomic
     def register_user(request, validated_data):
         """ Registers a new user with the provided validated data. """
-        password = validated_data.pop("password", None)
-        user = User.objects.create_user(password=password, **validated_data)
+        data = validated_data.copy()
+        password = data.pop("password", None)
+        data.pop("password_confirm", None)
+        user = User.objects.create_user(password=password, **data)
         # Additional logic can be added here, such as sending a welcome email
         AuditService.log(user=user, request=request, action=AuditAction.USER_REGISTER, description=f"user registered successfully.")
         return user
@@ -20,8 +22,10 @@ class AdminService:
     @transaction.atomic
     def create_user(request, validated_data):
         """ Creates a new user with the provided validated data. """
-        password = validated_data.pop("password", None)
-        user = User.objects.create_user(password=password, **validated_data)
+        data = validated_data.copy()
+        password = data.pop("password", None)
+        data.pop("password_confirm", None)
+        user = User.objects.create_user(password=password, **data)
         # Additional logic can be added here, such as sending a welcome email
         AuditService.log(user=user, request=request, action=AuditAction.USER_CREATE, description=f"user successfully created.")
         return user
@@ -207,13 +211,15 @@ class ProfileService:
 
     @staticmethod
     @transaction.atomic
-    def upload_photo(user, request, photo):
+    def upload_photo(user, request, validated_data):
         """ Uploads a profile picture for the specified user. """
         if user.profile_picture:
             if os.path.isfile(user.profile_picture.path):
                 os.remove(user.profile_picture.path)
-        user.profile_picture = photo
+
+        user.profile_picture = validated_data["profile_picture"]
         user.save(update_fields=["profile_picture", "updated_at"])
+
         AuditService.log(user=user, request=request, action=AuditAction.PROFILE_PICTURE_UPLOAD, description=f"User {user.email} uploaded a new profile picture.")
         return user
 
@@ -234,8 +240,8 @@ class PasswordService:
     @transaction.atomic
     def change_password(user, request, old_password, new_password):
         """ Changes the password of the specified user. """
-        if not user.check_password(old_password, user.password):
-            raise ValueError("Old password is incorrect.")
+        if not user.check_password(old_password):
+            raise ValueError({ "old_password":"Old password is incorrect." })
         user.set_password(new_password)
         user.save(update_fields=["password", "updated_at"])
         AuditService.log(user=user, request=request, action=AuditAction.PASSWORD_CHANGE, description=f"User {user.email} changed their password.")

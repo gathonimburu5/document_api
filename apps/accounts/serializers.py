@@ -3,9 +3,10 @@ from .validators import validate_password_stregth
 from .models import User, Role
 from django.contrib.auth import authenticate
 from apps.commons.utils import validate_file_size
+from django.contrib.auth.password_validation import validate_password as django_validate_password
 
 class RegisterUserSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, validators=[validate_password_stregth])
+    password = serializers.CharField(write_only=True, validators=[validate_password_stregth], style={"input_type": "password"})
     password_confirm = serializers.CharField(write_only=True, style={"input_type": "password"})
 
     class Meta:
@@ -24,7 +25,10 @@ class RegisterUserSerializer(serializers.ModelSerializer):
         return value
 
     def validate_password(self, value):
-        self.validate_password(value)
+        if len(value) < 8:
+            raise serializers.ValidationError("Password must be at least 8 characters long.")
+
+        django_validate_password(value)
         return value
 
     def validate(self, attrs):
@@ -44,7 +48,7 @@ class CurrentUserSerializer(serializers.ModelSerializer):
 
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
-    password = serializers.CharField(write_only=True)
+    password = serializers.CharField(write_only=True, style={"input_type": "password"})
 
     def validate(self, data):
         email = data.get("email")
@@ -120,16 +124,21 @@ class UserDetailSerializer(serializers.ModelSerializer):
         ]
 
 class AdminCreateUserSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, validators=[validate_password_stregth])
+    password = serializers.CharField(write_only=True, validators=[validate_password_stregth], style={"input_type": "password"})
+    confirm_password = serializers.CharField(write_only=True, style={"input_type": "password"})
 
     class Meta:
         model = User
-        fields = ("email", "password", "first_name", "last_name", "phone_number", "gender", "date_of_birth", "address")
+        fields = ("email", "password", "confirm_password", "first_name", "last_name", "phone_number", "gender", "date_of_birth", "address")
 
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
             raise serializers.ValidationError("A user with this email already exists.")
         return value
+    def validate(self, attrs):
+        if attrs["password"] != attrs["confirm_password"]:
+            raise serializers.ValidationError({ "confirm_password":"password do not match." })
+        return attrs
 
 class AdminUpdateUserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -179,13 +188,22 @@ class UploadProfilePictureSerializer(serializers.ModelSerializer):
         return value
 
 class ChangePasswordSerializer(serializers.Serializer):
-    old_password = serializers.CharField(write_only=True)
-    new_password = serializers.CharField(write_only=True, validators=[validate_password_stregth])
-    confirm_password = serializers.CharField(write_only=True)
+    old_password = serializers.CharField(write_only=True, style={"input_type": "password"})
+    new_password = serializers.CharField(write_only=True, validators=[validate_password_stregth], style={"input_type": "password"})
+    confirm_password = serializers.CharField(write_only=True, style={"input_type": "password"})
+
+    def validate_new_password(self, value):
+        if len(value) < 8:
+            raise serializers.ValidationError("Password must be at least 8 characters long.")
+
+        django_validate_password(value)
+        return value
 
     def validate(self, attrs):
         if attrs["new_password"] != attrs["confirm_password"]:
             raise serializers.ValidationError({"confirm_password":"Password do not match."})
+        if attrs["old_password"] == attrs["new_password"]:
+            raise serializers.ValidationError({ "new_password":"New password must be different from the old password." })
         return attrs
 
 

@@ -32,10 +32,10 @@ class DocumentListAPIView(APIView):
         return CustomResponse.success(data=serializer.data, message="Document retrieved successfully.")
 class DocumentCreateAPIView(APIView):
     permission_classes = [IsAuthenticated]
-    parser_classes = [FormParser, MultiPartParser]
+    parser_classes = [MultiPartParser, FormParser]
 
     @extend_schema(
-        request={ "multipart/form-data": DocumentCreateSerializer},
+        request=DocumentCreateSerializer,
         responses={201: DocumentDetailSerializer, 400: "Bad Request"},
         description="Create document.",
         operation_id="document_create"
@@ -68,7 +68,7 @@ class DocumentDetailAPIView(APIView):
 
 class DocumentUpdateAPIView(APIView):
     permission_classes = [IsAuthenticated]
-    parser_classes = [FormParser, MultiPartParser]
+    parser_classes = [MultiPartParser, FormParser]
 
     @extend_schema(
         request=DocumentUpdateSerializer,
@@ -102,7 +102,7 @@ class DocumentVersionAPIView(APIView):
 
 class UploadDocumentVersionAPIView(APIView):
     permission_classes = [IsAuthenticated]
-    parser_classes = [FormParser, MultiPartParser]
+    parser_classes = [MultiPartParser, FormParser]
 
     def get_document(self, document_id, request):
         return get_object_or_404(Document.objects.active().owned_by(request.user).with_details(), pk=document_id,)

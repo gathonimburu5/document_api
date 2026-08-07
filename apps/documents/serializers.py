@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import Document, DocumentVersion
 from apps.accounts.models import User
 from apps.commons.utils import validate_file_size, validate_upload_file
+import os
 
 class UserSummarySerializer(serializers.ModelSerializer):
     class Meta:
@@ -40,7 +41,7 @@ class DocumentDetailSerializer(serializers.ModelSerializer):
 class DocumentCreateSerializer(serializers.Serializer):
     title = serializers.CharField()
     description = serializers.CharField(required=False, allow_blank=True)
-    file = serializers.FileField(validators=[validate_upload_file])
+    file = serializers.FileField(required=True, validators=[validate_upload_file])
     notes = serializers.CharField(required=False)
 
     def validate_title(self, value):

@@ -109,6 +109,7 @@ SPECTACULAR_SETTINGS = {
     "TITLE":"Document API",
     "DESCRIPTION":"Document Management API",
     "VERSION":"1.0.0",
+    'COMPONENT_SPLIT_REQUEST': True
 }
 
 # Password validation

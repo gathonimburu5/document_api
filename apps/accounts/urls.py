@@ -23,7 +23,7 @@ from .views import (
 )
 
 urlpatterns = [
-    path("register/", RegisterUserView.as_view(), name="register"),
+    path("users-register/", RegisterUserView.as_view(), name="register"),
     path("login/", LoginView.as_view(), name="login"),
     path("logout/", LogoutView.as_view(), name="logout"),
     path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
@@ -33,11 +33,11 @@ urlpatterns = [
     path("roles/<int:role_id>/assign/", AssignRoleAPIView.as_view(), name="assign_role"),
     path("roles/<int:role_id>/remove/", RemoveRoleAPIView.as_view(), name="remove_role"),
     path("users/", UserListAPIView.as_view(), name="user_list"),
-    path("users/<int:user_id>/", UserDetailAPIView.as_view(), name="user_detail"),
-    path("users/<int:user_id>/deactivate/", DeactivateUserAPIView.as_view(), name="deactivate_user"),
-    path("users/<int:user_id>/activate/", ActivateUserAPIView.as_view(), name="activate_user"),
-    path("users/<int:user_id>/lock/", LockUserAPIView.as_view(), name="lock_user"),
-    path("users/<int:user_id>/unlock/", UnlockUserAPIView.as_view(), name="unlock_user"),
+    path("users-admin/<int:user_id>/", UserDetailAPIView.as_view(), name="user_detail"),
+    path("users-admin/<int:user_id>/deactivate/", DeactivateUserAPIView.as_view(), name="deactivate_user"),
+    path("users-admin/<int:user_id>/activate/", ActivateUserAPIView.as_view(), name="activate_user"),
+    path("users-admin/<int:user_id>/lock/", LockUserAPIView.as_view(), name="lock_user"),
+    path("users-admin/<int:user_id>/unlock/", UnlockUserAPIView.as_view(), name="unlock_user"),
     path("profile/", ProfileAPIView.as_view(), name="profile"),
     path("profile/update/", UpdateProfileAPIView.as_view(), name="update_profile"),
     path("profile/upload-photo/", UploadProfilePictureAPIView.as_view(), name="upload_profile_picture"),

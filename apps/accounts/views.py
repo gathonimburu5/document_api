@@ -350,6 +350,7 @@ class ProfileAPIView(APIView):
 
 class UpdateProfileAPIView(APIView):
     permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
 
     @extend_schema(
         request=UpdateProfileSerializer,
