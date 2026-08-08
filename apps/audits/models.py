@@ -29,6 +29,12 @@ class AuditAction(models.TextChoices):
     USER_LOCK = 'USER_LOCK', 'User Lock'
     USER_UNLOCK = 'USER_UNLOCK', 'User Unlock'
     USER_SOFT_DELETE = 'USER_SOFT_DELETE', 'User Soft Delete'
+    CREATE_REVIEW_REQUEST = 'CREATE_REVIEW_REQUEST', 'Create Review Request'
+    SUBMIT_REVIEW_REQUEST = 'SUBMIT_REVIEW_REQUEST', 'Submit Review Request'
+    CREATE_REVIEW_ASSIGNMENT = 'CREATE_REVIEW_ASSIGNMENT', 'Create Review Assignment'
+    START_REVIEW = 'START_REVIEW', 'Start Review'
+    CREATE_REVIEW_DECISION = 'CREATE_REVIEW_DECISION', 'Create Review Decision'
+    CREATE_REVIEW_COMMENT = 'CREATE_REVIEW_COMMENT', 'Create Review Comment'
 
 
 class AuditLog(models.Model):

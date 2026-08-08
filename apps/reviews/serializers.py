@@ -6,12 +6,12 @@ from apps.documents.models import Document, DocumentVersion
 class UserSummarySerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ("id", "email", "first_name", "last_name")
+        fields = ("id", "email", "first_name", "last_name",)
 class ReviewDecisionSerializer(serializers.ModelSerializer):
     class Meta:
         model = ReviewDecision
-        fields = ("decision", "comment", "created_at")
-        read_only_fields = ("created_at")
+        fields = ("decision", "comment", "created_at",)
+        read_only_fields = ("created_at",)
 class ReviewAssignmentSerializer(serializers.ModelSerializer):
     reviewer = UserSummarySerializer(read_only=True)
     decision = ReviewDecisionSerializer(read_only=True)
@@ -26,8 +26,8 @@ class CommentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Comment
-        fields = ("id", "replies", "author", "parent", "content", "created_at", "updated_at", "is_resolved")
-        read_only_fields = ("id", "author", "created_at", "updated_at", "replies")
+        fields = ("id", "replies", "author", "parent", "content", "created_at", "updated_at", "is_resolved",)
+        read_only_fields = ("id", "author", "created_at", "updated_at", "replies",)
 
     def get_replies(self, obj):
         return CommentSerializer(obj.replies.all(), many=True).data
@@ -50,8 +50,8 @@ class ReviewRequestDetailSerializer(serializers.ModelSerializer):
     comments = CommentSerializer(many=True, read_only=True)
     class Meta:
         model = ReviewRequest
-        fields = ("id", "document", "version", "requester", "status", "due_date", "created_at", "updated_at", "assignments", "comments")
-        read_only_fields = ("id", "requester", "status", "created_at", "updated_at", "assignments", "comments")
+        fields = ("id", "document", "version", "requester", "status", "due_date", "created_at", "updated_at", "assignments", "comments",)
+        read_only_fields = ("id", "requester", "status", "created_at", "updated_at", "assignments", "comments",)
 class ReviewRequestCreateSerializer(serializers.Serializer):
     document_id = serializers.UUIDField()
     version_id = serializers.IntegerField()
@@ -95,20 +95,14 @@ class ReviewAssignmentCreateSerializer(serializers.Serializer):
         attrs["reviewers"] = [reviewer_map[reviewer_id] for reviewer_id in reviewer_ids]
         return attrs
 class ReviewDecisionCreateSerializer(serializers.Serializer):
-    class Meta:
-        model = ReviewDecision
-        fields = ("decision", "comment",)
-        extra_kwargs = {
-            "comment":{
-                "required":False, "allow_blank": True,
-            }
-        }
+    decision = serializers.ChoiceField(choices=ReviewDecisionChoices.choices)
+    comment = serializers.CharField(required=False, allow_blank=True, default="")
 
-    def validate_decision(self, attrs):
+    def validate(self, attrs):
         decision = attrs.get("decision")
         comment = attrs.get("comment", "").strip()
 
-        if decision in (ReviewDecisionChoices.REJECT, ReviewDecisionChoices.REQUEST_CHANGES,) and comment:
+        if decision in (ReviewDecisionChoices.REJECT, ReviewDecisionChoices.REQUEST_CHANGES,) and not comment:
             raise serializers.ValidationError({ "comment":"A comment is required when rejecting or requesting changes." })
 
         attrs["comment"] = comment

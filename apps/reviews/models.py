@@ -34,7 +34,7 @@ class ReviewQuerySet(models.QuerySet):
     def rejected(self):
         return self.filter(status=ReviewStatusChoices.REJECTED)
     def requested_by(self, user):
-        return self.filter(rrequester=user)
+        return self.filter(requester=user)
     def for_document(self, document):
         return self.filter(document=document)
     def for_version(self, version):
