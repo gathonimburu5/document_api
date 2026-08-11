@@ -35,7 +35,9 @@ class AuditAction(models.TextChoices):
     START_REVIEW = 'START_REVIEW', 'Start Review'
     CREATE_REVIEW_DECISION = 'CREATE_REVIEW_DECISION', 'Create Review Decision'
     CREATE_REVIEW_COMMENT = 'CREATE_REVIEW_COMMENT', 'Create Review Comment'
-
+    REVIEW_APPROVED = 'REVIEW_APPROVED', 'Review Approved'
+    REVIEW_REJECTED = 'REVIEW_REJECTED', 'Review Rejected'
+    REVIEW_CHANGES = 'REVIEW_CHANGES', 'Review Changes'
 
 class AuditLog(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="audit_logs")

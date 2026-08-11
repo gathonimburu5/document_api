@@ -4,18 +4,22 @@ from apps.audits.models import AuditAction
 from .audit_services import AuditService
 from rest_framework.exceptions import ValidationError
 from django.utils import timezone
+from .notification_service import NotificationService
 import os
 
 class ReviewService:
     @staticmethod
     def _update_review_status(review_request):
+        old_status = review_request.status
         assignments = review_request.assignments.all()
         if assignments.filter(status=ReviewAssignmentStatus.PENDING).exists():
-            return
-        if assignments.filter(status=ReviewAssignmentStatus.PENDING).exists():
-            return
+            return False
+        if assignments.filter(status=ReviewAssignmentStatus.IN_REVIEW).exists():
+            return False
 
         decisions = ReviewDecision.objects.filter(assignment__review=review_request)
+        if not decisions.exists():
+            return False
         if decisions.filter(decision=ReviewDecisionChoices.REJECT).exists():
             review_request.status = ReviewStatusChoices.REJECTED
         elif decisions.filter(decision=ReviewDecisionChoices.REQUEST_CHANGES).exists():
@@ -23,9 +27,11 @@ class ReviewService:
         elif (decisions.exists() and not decisions.exclude(decision=ReviewDecisionChoices.APPROVE).exists()):
             review_request.status = ReviewStatusChoices.APPROVED
         else:
-            return
+            return False
 
         review_request.save(update_fields=["status", "updated_at"])
+
+        return old_status != review_request.status
 
     @staticmethod
     @transaction.atomic
@@ -54,9 +60,13 @@ class ReviewService:
             user=requester,
             request=request,
             action=AuditAction.CREATE_REVIEW_REQUEST,
-            description=f"review request successfully created.",
+            description=f"Review request successfully created.",
             metadata={
-                "review_status":review.status
+                "review_id": str(review.id),
+                "document_id": str(document.id),
+                "version_id": str(version.id),
+                "due_date": (review.due_date.isoformat() if review.due_date else None),
+                "status":review.status,
             }
         )
 
@@ -64,16 +74,29 @@ class ReviewService:
 
     @staticmethod
     @transaction.atomic
-    def submit_review_request(*, review_request):
+    def submit_review_request(*, review_request, request):
         if review_request.status != ReviewStatusChoices.DRAFT:
             raise ValidationError({ "review_request":"Only draft review requests can be submitted." })
         review_request.status = ReviewStatusChoices.SUBMITTED
         review_request.save(update_fields=["status", "updated_at"])
+
+        AuditService.log(
+            user=review_request.requester,
+            request=request,
+            action=AuditAction.SUBMIT_REVIEW_REQUEST,
+            description="Review request submitted",
+            metadata={
+                "review_id": str(review_request.id),
+                "document_id": str(review_request.document_id),
+                "version_id": str(review_request.version_id),
+                "status": review_request.status,
+            }
+        )
         return review_request
 
     @staticmethod
     @transaction.atomic
-    def create_review_assignment(*, request_review, reviewers,):
+    def create_review_assignment(*, request_review, reviewers, request,):
         if request_review.status != ReviewStatusChoices.SUBMITTED:
             raise ValidationError({ "review_request":"Reviewers can only be assigned to a submitted review request." })
 
@@ -91,11 +114,27 @@ class ReviewService:
 
             assignments.append(assignment)
 
+            NotificationService.notify_review_assignment(reviewer=reviewer, review=request_review)
+
+            AuditService.log(
+                user=request_review.requester,
+                request=request,
+                action=AuditAction.CREATE_REVIEW_ASSIGNMENT,
+                description="Create review assignment",
+                metadata={
+                    "review_id":str(request_review.id),
+                    "assignment_id":str(assignment.id),
+                    "reviewer_id":str(reviewer.id),
+                    "reviewer_email":reviewer.email,
+                    "assignment_status":assignment.status,
+                }
+            )
+
         return assignments
 
     @staticmethod
     @transaction.atomic
-    def start_review(*, review_request):
+    def start_review(*, review_request, request):
         if review_request.status != ReviewStatusChoices.SUBMITTED:
             raise ValidationError({ "review_request":"Only submitted review requests can be started." })
 
@@ -109,11 +148,29 @@ class ReviewService:
 
         review_request.status = ReviewStatusChoices.IN_REVIEW
         review_request.save(update_fields=["status", "updated_at"])
+
+        for assignment in assignments:
+            NotificationService.notify_review_started(reviewer=assignment.reviewer, review=review_request)
+
+        AuditService.log(
+            user=request.user,
+            request=request,
+            action=AuditAction.START_REVIEW,
+            description="Review started",
+            metadata={
+                "review_id":str(review_request.id),
+                "document_id": str(review_request.document_id),
+                "status":review_request.status,
+                "reviewer_count":len(assignments),
+                "reviewer_ids": [str(assignment.reviewer_id) for assignment in assignments],
+            }
+        )
+
         return review_request
 
     @staticmethod
     @transaction.atomic
-    def create_review_decision(*, assignment, reviewer, decision, comment="",):
+    def create_review_decision(*, request, assignment, reviewer, decision, comment="",):
         if assignment.reviewer_id != reviewer.id:
             raise ValidationError({ "assignment":"You are not assigned to this review." })
         if assignment.status != ReviewAssignmentStatus.IN_REVIEW:
@@ -122,6 +179,7 @@ class ReviewService:
             raise ValidationError({ "decision":"A decision has already been recorded for this assignment." })
         if decision in [ReviewDecisionChoices.REJECT, ReviewDecisionChoices.REQUEST_CHANGES] and not comment.strip():
             raise ValidationError({ "comment":"A comment is required when rejecting or requesting changes." })
+
         review_decision = ReviewDecision.objects.create(
             assignment=assignment,
             decision=decision,
@@ -132,13 +190,49 @@ class ReviewService:
         assignment.completed_at = timezone.now()
         assignment.save(update_fields=["status", "completed_at"])
 
-        ReviewService._update_review_status(assignment.review)
+        review_request = assignment.review
+        NotificationService.notify_decision_submitted(recipient=review_request.requester, review=review_request, decision=decision)
+
+        previous_status = review_request.status
+        staged_status = ReviewService._update_review_status(review_request)
+
+        if (previous_status != review_request.status and review_request.status == ReviewStatusChoices.APPROVED):
+            NotificationService.notify_review_approved(recipient=review_request.requester, review=review_request)
+
+        elif (previous_status != review_request.status and review_request.status == ReviewStatusChoices.REJECTED):
+            NotificationService.notify_review_rejected(recipient=review_request.requester, review=review_request)
+
+        elif (previous_status != review_request.status and review_request.status == ReviewStatusChoices.CHANGES_REQUESTED):
+            NotificationService.notify_changes_requested(recipient=review_request.requester, review=review_request)
+
+        if staged_status:
+            if review_request.status == ReviewStatusChoices.APPROVED:
+                audit_action = AuditAction.REVIEW_APPROVED
+            elif review_request.status == ReviewStatusChoices.REJECTED:
+                audit_action = AuditAction.REVIEW_REJECTED
+            elif review_request.status == ReviewStatusChoices.CHANGES_REQUESTED:
+                audit_action = AuditAction.REVIEW_CHANGES
+
+            AuditService.log(
+                user=reviewer,
+                request=request,
+                action=audit_action,
+                description=f"Review status decision changed to {review_request.status}",
+                metadata={
+                    "review_id":str(review_request.id),
+                    "assignment_id":str(assignment.id),
+                    "decision_id":str(decision.id),
+                    "reviewer_id":str(reviewer.id),
+                    "decision":decision,
+                    "assignment_status":assignment.status,
+                }
+            )
 
         return review_decision
 
     @staticmethod
     @transaction.atomic
-    def create_review_comment(*, review_request, author, content, parent=None):
+    def create_review_comment(*, request, review_request, author, content, parent=None):
         if review_request.status not in [ReviewStatusChoices.IN_REVIEW, ReviewStatusChoices.CHANGES_REQUESTED, ReviewStatusChoices.APPROVED, ReviewStatusChoices.REJECTED]:
             raise ValidationError({ "review_request":"Comments cannot be added to a draft or unsubmitted review request." })
         if parent:
@@ -149,11 +243,28 @@ class ReviewService:
         if not content:
             raise ValidationError({ "content":"Comment cannot be empty." })
 
-        return Comment.objects.create(
+        comment = Comment.objects.create(
             review=review_request,
             author=author,
             parent=parent,
             content=content
         )
+
+        if review_request.requester_id != author.id:
+            NotificationService.notify_comment_added(recipient=review_request.requester, review=review_request, author=author,)
+
+        AuditService.log(
+            user=author,
+            request=request,
+            action=AuditAction.CREATE_REVIEW_COMMENT,
+            description="Review comment added.",
+            metadata={
+                "review_id":str(review_request.id),
+                "comment_id":str(comment.id),
+                "parent_comment_id":str(parent.id) if parent else None
+            }
+        )
+
+        return comment
 
 

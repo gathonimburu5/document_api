@@ -56,7 +56,8 @@ class ReviewRequestCreateSerializer(serializers.Serializer):
     document_id = serializers.UUIDField()
     version_id = serializers.IntegerField()
     due_date = serializers.DateTimeField(required=False, allow_null=True)
-    reviewer_ids = serializers.ListField(child=serializers.UUIDField(), allow_null=False)
+
+    # reviewer_ids = serializers.ListField(child=serializers.UUIDField(), allow_null=False)
 
     def validate(self, attrs):
         document_id = attrs["document_id"]
@@ -77,9 +78,9 @@ class ReviewRequestCreateSerializer(serializers.Serializer):
 
         return attrs
 class ReviewAssignmentCreateSerializer(serializers.Serializer):
-    reviewer_ids = serializers.ListField(child=serializers.UUIDField(), allow_null=False)
+    reviewer_ids = serializers.ListField(child=serializers.IntegerField(), allow_empty=False)
 
-    def validate_reviewer_ids(self, attrs):
+    def validate(self, attrs):
         reviewer_ids = attrs["reviewer_ids"]
         if len(reviewer_ids) != len(set(reviewer_ids)):
             raise serializers.ValidationError({ "reviewer_ids":"Duplicate reviewers are not allowed." })

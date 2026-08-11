@@ -106,8 +106,8 @@ SIMPLE_JWT = {
 
 # swagger ui setting
 SPECTACULAR_SETTINGS = {
-    "TITLE":"Document API",
-    "DESCRIPTION":"Document Management API",
+    "TITLE":"Document & Reviews API",
+    "DESCRIPTION":"Document & Reviews Management API",
     "VERSION":"1.0.0",
     'COMPONENT_SPLIT_REQUEST': True
 }

@@ -53,6 +53,7 @@ class RegisterUserView(APIView):
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
+    parser_classes = [FormParser]
 
     @extend_schema(
         request=LoginSerializer,

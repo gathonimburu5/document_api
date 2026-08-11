@@ -33,6 +33,7 @@ class ReviewRequestListAPIView(APIView):
 
 class ReviewRequestCreateAPIView(APIView):
     permission_classes = [IsAuthenticated]
+    parser_classes = [FormParser]
 
     @extend_schema(
         request=ReviewRequestCreateSerializer,
@@ -75,7 +76,7 @@ class ReviewRequestSubmitAPIView(APIView):
     )
     def post(self, request, pk):
         review_request = get_object_or_404(ReviewRequest, pk=pk, requester=request.user)
-        review_request = ReviewService.submit_review_request(review_request=review_request)
+        review_request = ReviewService.submit_review_request(review_request=review_request, request=request)
         serializer = ReviewRequestDetailSerializer(review_request)
         return CustomResponse.success(message="Review request submitted successfully.", data=serializer.data, status=status.HTTP_200_OK)
 
@@ -92,7 +93,7 @@ class ReviewAssignmentAPIView(APIView):
         serializer = ReviewAssignmentCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         assignments = ReviewService.create_review_assignment(
-            request_review=review_request, reviewers=serializer.validated_data["reviewer"]
+            request_review=review_request, reviewers=serializer.validated_data["reviewers"], request=request
         )
         response_serializer = ReviewAssignmentSerializer(assignments, many=True)
         return CustomResponse.success(message="Reviews assigned successfully.", data=response_serializer.data, status=status.HTTP_201_CREATED)
@@ -103,7 +104,7 @@ class ReviewStartAPIView(APIView):
     @extend_schema(responses={200: ReviewRequestDetailSerializer, 404: "Bad Request"}, operation_id="review_start")
     def post(self, request, pk):
         review_request = get_object_or_404(ReviewRequest, pk=pk)
-        review_request = ReviewService.start_review(review_request=review_request)
+        review_request = ReviewService.start_review(review_request=review_request, request=request)
         serializer = ReviewRequestDetailSerializer(review_request)
         return CustomResponse.success(message="Review started successfully.", data=serializer.data, status=status.HTTP_200_OK)
 
@@ -120,6 +121,7 @@ class ReviewDecisionCreateAPIView(APIView):
         serializer = ReviewDecisionCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         decision = ReviewService.create_review_decision(
+            request=request,
             assignment=assignment,
             reviewer=request.user,
             decision=serializer.validated_data["decision"],
@@ -141,6 +143,7 @@ class ReviewCommentAPIView(APIView):
         serializer = CommentSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         comment = ReviewService.create_review_comment(
+            request=request,
             review_request=review_request,
             author=request.user,
             content=serializer.validated_data["content"],
